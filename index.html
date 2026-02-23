@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>紅運優・資產自保規劃書</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Noto Sans TC', sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 20px;
+            width: 20px;
+            border-radius: 50%;
+            background: #6366f1;
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(99, 102, 241, 0.5);
+            margin-top: -8px;
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 4px;
+            background: #374151;
+            border-radius: 2px;
+        }
+        .sticky-header {
+            position: sticky;
+            top: 0;
+            z-index: 50;
+        }
+        .chart-bar-container {
+            transition: all 0.3s ease;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 pb-10">
+
+    <!-- 1. 固定頂部儀表板 -->
+    <div class="sticky-header bg-[#0F172A] text-white shadow-2xl rounded-b-[2rem] border-b border-indigo-500/30">
+        <div class="px-5 pt-5 pb-4 max-w-lg mx-auto">
+            <!-- 第一排：年齡與情境切換 -->
+            <div class="flex items-center justify-between mb-4">
+                <div class="flex items-baseline gap-1.5">
+                    <span id="display-age" class="text-4xl font-black text-indigo-400 leading-none">31</span>
+                    <span class="text-[11px] font-bold text-slate-400">歲規劃試算</span>
+                </div>
+                <div class="flex bg-slate-800 rounded-xl p-0.5 border border-slate-700">
+                    <button onclick="setScenario('safe')" id="btn-safe" class="px-5 py-1.5 rounded-lg text-xs font-black transition-all bg-indigo-600 text-white shadow-lg">
+                        平安
+                    </button>
+                    <button onclick="setScenario('risk')" id="btn-risk" class="px-5 py-1.5 rounded-lg text-xs font-black transition-all text-slate-500">
+                        風險
+                    </button>
+                </div>
+            </div>
+
+            <!-- 第二排：四個核心指標 -->
+            <div class="grid grid-cols-2 gap-2 mb-5">
+                <div class="flex items-center gap-3 bg-white/5 p-2 rounded-xl border border-white/5">
+                    <i data-lucide="shield-check" class="text-indigo-400 w-4 h-4"></i>
+                    <div>
+                        <p class="text-[8px] text-slate-500 font-bold uppercase mb-0.5">重大傷病保障</p>
+                        <p id="stat-mi" class="text-xs font-black">200萬</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-3 bg-white/5 p-2 rounded-xl border border-white/5">
+                    <i data-lucide="trending-up" class="text-emerald-400 w-4 h-4"></i>
+                    <div>
+                        <p class="text-[8px] text-slate-500 font-bold uppercase mb-0.5">保單價值(解約)</p>
+                        <p id="stat-cv" class="text-xs font-black text-emerald-400">6萬</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-3 bg-white/5 p-2 rounded-xl border border-white/5">
+                    <i data-lucide="heart-pulse" class="text-blue-400 w-4 h-4"></i>
+                    <div>
+                        <p class="text-[8px] text-slate-500 font-bold uppercase mb-0.5">壽險保障</p>
+                        <p id="stat-life" class="text-xs font-black text-blue-400">14萬</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-3 bg-white/5 p-2 rounded-xl border border-white/5">
+                    <i data-lucide="coins" class="text-yellow-400 w-4 h-4"></i>
+                    <div>
+                        <p class="text-[8px] text-slate-500 font-bold uppercase mb-0.5">生存領息(每年)</p>
+                        <p id="stat-div" class="text-xs font-black text-yellow-400">54歲啟動</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 第三排：滑桿控制 -->
+            <div class="relative px-1">
+                <input type="range" min="31" max="98" value="31" id="age-slider" oninput="updateAge(this.value)" class="w-full h-2.5 bg-slate-700 rounded-full appearance-none cursor-pointer accent-indigo-500">
+            </div>
+        </div>
+    </div>
+
+    <!-- 2. 內容捲動區 -->
+    <main class="p-4 max-w-lg mx-auto space-y-8 pt-4">
+        
+        <!-- [1] 資產風險圖 -->
+        <section class="bg-white rounded-[2rem] p-6 shadow-sm border border-slate-100">
+            <div class="flex items-center justify-between mb-6">
+                <div class="flex items-center gap-2">
+                    <i data-lucide="bar-chart-3" class="text-indigo-600 w-5 h-5"></i>
+                    <h3 class="font-black text-slate-800 text-sm tracking-wide">資產風險成長對比</h3>
+                </div>
+                <span class="text-[10px] text-slate-400 font-bold italic">解約金 + 累計生存金</span>
+            </div>
+            <div id="chart-container" class="h-48 w-full flex items-end gap-[3px] pt-10 border-b border-slate-100 px-1 relative">
+                <!-- 圖表柱狀由 JS 動態生成 -->
+            </div>
+            <div class="mt-6 flex justify-center gap-6">
+                <div class="flex items-center gap-1.5 text-[10px] font-bold text-slate-500">
+                    <div class="w-3 h-3 bg-red-400 rounded-sm"></div> 重大傷病 200萬
+                </div>
+                <div class="flex items-center gap-1.5 text-[10px] font-bold text-slate-500">
+                    <div class="w-3 h-3 bg-emerald-500 rounded-sm"></div> 總資產成長
+                </div>
+            </div>
+        </section>
+
+        <!-- [2] 年齡情境模擬 -->
+        <section id="scenario-card" class="bg-white rounded-[2.5rem] p-8 shadow-sm border transition-all duration-500 border-slate-100">
+            <div class="flex items-center gap-3 mb-6">
+                <div id="scenario-icon-bg" class="p-2 bg-indigo-50 rounded-xl text-indigo-600">
+                    <i id="scenario-icon" data-lucide="trending-up" class="w-6 h-6"></i>
+                </div>
+                <h3 id="scenario-title" class="font-black text-slate-800 text-lg">31 歲 情境解析</h3>
+            </div>
+            
+            <div id="scenario-content" class="space-y-6 text-sm text-slate-600 leading-relaxed">
+                <!-- 由 JS 動態填充 -->
+            </div>
+        </section>
+
+        <!-- [3] 穩定確定無風險說明 -->
+        <section class="bg-[#064E3B] text-white rounded-[2.5rem] p-8 shadow-xl relative overflow-hidden">
+            <div class="relative z-10">
+                <div class="flex items-center gap-2 mb-4 text-emerald-400">
+                    <i data-lucide="lock" class="w-5 h-5"></i>
+                    <h3 class="text-xs font-bold uppercase tracking-widest">資產確定性優勢</h3>
+                </div>
+                <h4 class="text-2xl font-bold mb-6 italic leading-tight">風險之外，<br/>給您百分之百的「確定感」</h4>
+                <div class="space-y-4">
+                    <div class="bg-white/10 p-5 rounded-2xl border border-white/10">
+                        <p class="font-black text-emerald-300 text-base mb-2">穩定、確定的增值</p>
+                        <p class="text-xs text-emerald-100/70 leading-relaxed font-medium">資產增長完全由合約白紙黑字載明，不受全球降息、股市崩盤或地緣政治風險影響。您的每一分退休金，都是算得到的、拿得到的成果。</p>
+                    </div>
+                    <div class="bg-white/10 p-5 rounded-2xl border border-white/10">
+                        <p class="font-black text-emerald-300 text-base mb-2">無風險的資產自保</p>
+                        <p class="text-xs text-emerald-100/70 leading-relaxed font-medium">具備高度安全性與保本特性。當 51 歲後定期險到期，這份成長至超過 200 萬的解約金，將自動接手成為您的終身醫療防護池。</p>
+                    </div>
+                </div>
+            </div>
+            <div class="absolute -right-20 -bottom-20 w-64 h-64 bg-emerald-500/10 rounded-full blur-[80px]"></div>
+        </section>
+
+        <!-- [4] 結論：價值強調 -->
+        <section class="bg-indigo-900 text-white rounded-[2.5rem] p-10 text-center shadow-2xl relative overflow-hidden">
+            <div class="relative z-10">
+                <i data-lucide="wallet" class="mx-auto text-indigo-400 w-12 h-12 mb-6"></i>
+                <h3 class="text-3xl font-black mb-6 tracking-tighter">價值大於成本的選擇</h3>
+                <p class="text-sm text-indigo-200 leading-relaxed mb-10 font-medium">
+                    每個月僅僅投入 <span class="text-white font-black text-xl border-b-4 border-indigo-500 px-1">12,000 元</span>，<br/>您在時間的複利下換取的多重價值：
+                </p>
+                
+                <div class="space-y-3 text-left" id="value-list">
+                    <!-- 由 JS 生成 -->
+                </div>
+
+                <p class="mt-12 text-[10px] font-black text-indigo-300 uppercase tracking-widest italic">
+                    — 守護拼搏的現在，確定尊嚴的未來 —
+                </p>
+            </div>
+        </section>
+
+        <footer class="py-12 text-center">
+            <p class="text-[9px] text-slate-400 leading-relaxed px-12">
+                ※ 本數據參考富邦人壽「紅運優(PFNA)」及重大傷病相關險種。分紅並非保證，實際數值依保單條款及宣告利率為準。美元匯率以 1:31.5 換算僅供說明。
+            </p>
+        </footer>
+    </main>
+
+    <script>
+        // 數據常數
+        const USD_TWD = 31.5;
+        let currentAge = 31;
+        let currentScenario = 'safe';
+        let insuranceData = [];
+
+        // 初始化數據
+        function initData() {
+            let accumulatedDivUSD = 0;
+            for (let i = 31; i <= 98; i++) {
+                const yr = i - 31 + 1;
+                let cvUSD = 0;
+                let lifeUSD = 0;
+                let divUSD = 0;
+
+                // 1. 解約金數據擬合 (B+E+Y)
+                if (yr <= 10) cvUSD = 2037 + (yr - 1) * 3479;
+                else if (i <= 54) cvUSD = 44089 + (i - 41) * 2232;
+                else if (i <= 70) cvUSD = 73108 + (i - 54) * 200;
+                else cvUSD = 76184 + (i - 70) * 1521;
+
+                // 2. 壽險/身故數據擬合 (A+D+X)
+                if (yr <= 10) lifeUSD = 4346 + (yr - 1) * 6711;
+                else if (i <= 54) lifeUSD = 60035 + (i - 41) * 2265;
+                else if (i <= 70) lifeUSD = 89490 - (i - 54) * 270;
+                else lifeUSD = 85027 + (i - 70) * 1205;
+
+                // 3. 生存金數據 (F+G)
+                if (i >= 54) {
+                    divUSD = 2981 + (i - 54) * 13;
+                    accumulatedDivUSD += divUSD;
+                }
+
+                const miNTD = (i <= 51) ? 2000000 : 0;
+
+                insuranceData.push({
+                    age: i,
+                    mi: miNTD,
+                    cv: cvUSD * USD_TWD,
+                    life: lifeUSD * USD_TWD,
+                    div: divUSD * USD_TWD,
+                    totalValue: (cvUSD + accumulatedDivUSD) * USD_TWD
+                });
+            }
+        }
+
+        function updateAge(age) {
+            currentAge = parseInt(age);
+            render();
+        }
+
+        function setScenario(scen) {
+            currentScenario = scen;
+            render();
+        }
+
+        function render() {
+            const data = insuranceData.find(d => d.age === currentAge);
+            
+            // 更新儀表板
+            document.getElementById('display-age').innerText = currentAge;
+            document.getElementById('stat-mi').innerText = data.mi > 0 ? '200萬' : '資產接力';
+            document.getElementById('stat-cv').innerText = Math.round(data.cv/10000) + '萬';
+            document.getElementById('stat-life').innerText = Math.round(data.life/10000) + '萬';
+            document.getElementById('stat-div').innerText = currentAge >= 54 ? (data.div/10000).toFixed(1) + '萬' : '54歲啟動';
+
+            // 更新按鈕樣式
+            const btnSafe = document.getElementById('btn-safe');
+            const btnRisk = document.getElementById('btn-risk');
+            if (currentScenario === 'safe') {
+                btnSafe.className = "px-5 py-1.5 rounded-lg text-xs font-black transition-all bg-indigo-600 text-white shadow-lg";
+                btnRisk.className = "px-5 py-1.5 rounded-lg text-xs font-black transition-all text-slate-500";
+            } else {
+                btnSafe.className = "px-5 py-1.5 rounded-lg text-xs font-black transition-all text-slate-500";
+                btnRisk.className = "px-5 py-1.5 rounded-lg text-xs font-black transition-all bg-red-500 text-white shadow-lg";
+            }
+
+            // 渲染圖表
+            const chart = document.getElementById('chart-container');
+            chart.innerHTML = '';
+            insuranceData.forEach((d, i) => {
+                if (i % 4 !== 0) return;
+                const maxVal = 9000000;
+                const hValue = (d.totalValue / maxVal) * 100;
+                const hCover = (d.mi / maxVal) * 100;
+                const isCurrent = d.age === currentAge || (currentAge > d.age && currentAge < d.age + 4);
+
+                const barGroup = document.createElement('div');
+                barGroup.className = "flex-1 flex flex-col justify-end h-full gap-[1px] relative";
+                
+                const valueBar = document.createElement('div');
+                valueBar.style.height = hValue + '%';
+                valueBar.className = `w-full rounded-t-md transition-all duration-300 ${isCurrent ? 'bg-emerald-500 ring-2 ring-emerald-200' : 'bg-emerald-100'}`;
+                
+                const coverBar = document.createElement('div');
+                coverBar.style.height = hCover + '%';
+                coverBar.className = `w-full transition-all duration-300 ${isCurrent ? 'bg-red-400' : 'bg-red-50'}`;
+                
+                barGroup.appendChild(valueBar);
+                barGroup.appendChild(coverBar);
+
+                if (isCurrent) {
+                    const label = document.createElement('div');
+                    label.className = "absolute -top-10 left-1/2 -translate-x-1/2 flex flex-col items-center";
+                    label.innerHTML = `<div class="bg-indigo-600 text-white text-[10px] font-black px-2 py-0.5 rounded-md shadow-lg whitespace-nowrap">${Math.round(d.totalValue/10000)}萬</div><div class="w-0.5 h-2 bg-indigo-600"></div>`;
+                    barGroup.appendChild(label);
+                }
+                
+                chart.appendChild(barGroup);
+            });
+
+            // 渲染情境卡片
+            const scenarioCard = document.getElementById('scenario-card');
+            const scenarioIconBg = document.getElementById('scenario-icon-bg');
+            const scenarioIcon = document.getElementById('scenario-icon');
+            const scenarioTitle = document.getElementById('scenario-title');
+            const scenarioContent = document.getElementById('scenario-content');
+
+            scenarioTitle.innerText = currentAge + " 歲 情境解析";
+
+            if (currentScenario === 'safe') {
+                scenarioCard.className = "rounded-[2.5rem] p-8 shadow-sm border transition-all duration-500 bg-white border-slate-100 shadow-indigo-100";
+                scenarioIconBg.className = "p-2 bg-indigo-50 rounded-xl text-indigo-600";
+                scenarioIcon.setAttribute('data-lucide', 'trending-up');
+                scenarioContent.innerHTML = `
+                    <div class="space-y-4">
+                        <p>在平安健康的日子裡，您的規劃正不斷**複利滾存**，資產與保障同步增長：</p>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div class="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                                <p class="text-[10px] text-slate-400 font-bold mb-1 uppercase">目前總資產</p>
+                                <p class="text-xl font-black text-indigo-600">${Math.round(data.totalValue/10000)} <span class="text-xs">萬</span></p>
+                            </div>
+                            <div class="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                                <p class="text-[10px] text-slate-400 font-bold mb-1 uppercase">身故總壽險</p>
+                                <p class="text-xl font-black text-indigo-600">${Math.round(data.life/10000)} <span class="text-xs">萬</span></p>
+                            </div>
+                        </div>
+                        <p class="text-xs font-medium text-slate-400 italic">" 您的財富正在跑贏通膨與時間。"</p>
+                    </div>
+                `;
+            } else {
+                scenarioCard.className = "rounded-[2.5rem] p-8 shadow-sm border transition-all duration-500 bg-red-50 border-red-100 shadow-red-100";
+                scenarioIconBg.className = "p-2 bg-red-100 rounded-xl text-red-600";
+                scenarioIcon.setAttribute('data-lucide', 'alert-circle');
+                scenarioContent.innerHTML = `
+                    <div class="space-y-4 font-medium">
+                        <p class="text-red-900 font-black text-base">若在此刻確診重大傷病，護航機制啟動：</p>
+                        <div class="space-y-3">
+                            <div class="bg-white p-4 rounded-2xl border border-red-200 shadow-sm flex items-start gap-4">
+                                <div class="bg-red-50 p-2 rounded-lg text-red-600 shrink-0 mt-0.5"><i data-lucide="shield-check" class="w-5 h-5"></i></div>
+                                <p class="text-slate-800"><span class="font-black text-red-600">不影響家人：</span> 200萬一次金即刻到帳，解決最貴的自費醫療，不讓親友奔走借錢。</p>
+                            </div>
+                            <div class="bg-white p-4 rounded-2xl border border-red-200 shadow-sm flex items-start gap-4">
+                                <div class="bg-red-50 p-2 rounded-lg text-red-600 shrink-0 mt-0.5"><i data-lucide="briefcase" class="w-5 h-5"></i></div>
+                                <p class="text-slate-800"><span class="font-black text-red-600">不影響工作：</span> 理賠金可取代您的工作收入，安心養病不必為職涯中斷煩惱。</p>
+                            </div>
+                            <div class="bg-white p-4 rounded-2xl border border-red-200 shadow-sm flex items-start gap-4">
+                                <div class="bg-red-50 p-2 rounded-lg text-red-600 shrink-0 mt-0.5"><i data-lucide="home" class="w-5 h-5"></i></div>
+                                <p class="text-slate-800"><span class="font-black text-red-600">不動用現有資產：</span> 不需領出辛苦存下的投資、不需變賣房產股票，風險由理賠金買單，原本的儲蓄計畫繼續滾存。</p>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            // 重新刷新圖標
+            lucide.createIcons();
+        }
+
+        // 初始化結論清單
+        function initValueList() {
+            const list = [
+                { label: "保障價值", text: "即刻擁有 200 萬的高額重大健康防護網" },
+                { label: "退休價值", text: "54 歲後每年約 7.7% (本金) 的逐年增長領息" },
+                { label: "增值價值", text: "本金隨時間翻倍，打造三倍、四倍的尊嚴未來" },
+                { label: "守護價值", text: "不幸生病時，確保家人不必為錢奔走、現有資產不被拋售" },
+                { label: "自由價值", text: "一份終身可隨時動用的現金資產，可用於醫療、傳承或圓夢" }
+            ];
+            const container = document.getElementById('value-list');
+            list.forEach(item => {
+                const div = document.createElement('div');
+                div.className = "flex gap-4 bg-white/5 py-4 px-5 rounded-2xl border border-white/5 items-start";
+                div.innerHTML = `
+                    <div class="bg-indigo-500/30 p-1 rounded-lg shrink-0 mt-0.5"><i data-lucide="arrow-right" class="text-indigo-300 w-3.5 h-3.5"></i></div>
+                    <div>
+                        <p class="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-0.5">${item.label}</p>
+                        <p class="text-xs font-bold text-indigo-50 leading-snug">${item.text}</p>
+                    </div>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        // 啟動
+        initData();
+        initValueList();
+        render();
+    </script>
+</body>
+</html>
+
